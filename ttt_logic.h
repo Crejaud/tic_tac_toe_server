@@ -21,6 +21,18 @@ void unix_error(char *msg);
 
 int Accept(int s, struct sockaddr *addr, socklen_t *addrlen);
 
+/* Pthreads thread control wrappers */
+void Pthread_create(pthread_t *tidp, pthread_attr_t *attrp,
+                    void * (*routine)(void *), void *argp);
+void Pthread_join(pthread_t tid, void **thread_return);
+void Pthread_cancel(pthread_t tid);
+void Pthread_detach(pthread_t tid);
+
+/* POSIX mutex wrappers */
+void Pthread_mutex_init(pthread_mutex_t *mtx, const pthread_mutexattr_t *attr);
+void Pthread_mutex_lock(pthread_mutex_t *mtx);
+void Pthread_mutex_unlock(pthread_mutex_t *mtx);
+
 /* Dynamic storage allocation wrappers */
 void *Malloc(size_t size);
 
