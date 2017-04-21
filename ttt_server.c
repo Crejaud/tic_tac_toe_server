@@ -15,7 +15,16 @@ int main(int argc, char **argv) {
   int is_player_2_taken = FALSE;  /* Player 2 boolean to check if player 1 is taken */
   int p1_fd;                      /* Player 1 socket fd */
   int p2_fd;                      /* Player 2 socket fd */
+  int spec_fd;                    /* Spectator socket fd */
   pthread_t tid;                  /* Pthread used for processing spectators, p1, and p2 */
+
+  // Initialize board_history
+
+  // there can be at most 10 different boards in tic tac toe
+  board_history = (char ***) Malloc(MAX_BOARD_HISTORY * sizeof(char**));
+
+  // Ensure every board is set to NULL
+  clear_board_history();
 
   /* Create a server file descriptor */
   port = atoi(argv[1]);
@@ -40,10 +49,7 @@ int main(int argc, char **argv) {
         is_player_1_taken = TRUE;
 
         // construct argument to
-        request_arg *targ = (request_arg *) Malloc(sizeof(request_arg));
-        targ->connfd = p1_fd;
-        targ->clientaddr = clientaddr;
-        targ->clientlen = clientlen;
+        request_arg *targ =  = construct_request_arg(p1_fd, clientaddr, clientlen);
 
         // Create thread and call process_request
         Pthread_create(&tid, NULL, process_p1_thread_func, targ);
@@ -53,10 +59,7 @@ int main(int argc, char **argv) {
         is_player_2_taken = TRUE;
 
         // construct argument to
-        request_arg *targ = (request_arg *) Malloc(sizeof(request_arg));
-        targ->connfd = p2_fd;
-        targ->clientaddr = clientaddr;
-        targ->clientlen = clientlen;
+        request_arg *targ = construct_request_arg(p2_fd, clientaddr, clientlen);
 
         // Create thread and call process_request
         Pthread_create(&tid, NULL, process_p2_thread_func, targ);
@@ -65,6 +68,14 @@ int main(int argc, char **argv) {
         // is a spectator!
         spec_fd = Accept(listenfd, (struct sockaddr *) &clientaddr, &clientlen);
 
+        // Increment the number of spectators
+        spec_count++;
+
+        // construct argument to
+        request_arg *targ =  = construct_request_arg(spec_fd, clientaddr, clientlen);
+
+        // Create thread and call process_request
+        Pthread_create(&tid, NULL, process_spec_thread_func, targ);
       }
   }
 

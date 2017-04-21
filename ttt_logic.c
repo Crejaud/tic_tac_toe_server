@@ -158,5 +158,29 @@ void process_spec_thread_func(void *args) {
   request_arg *targ = args;
   process_spec(targ->connfd, targ->clientaddr, targ->clientlen);
   free(targ);
+  spec_count--;
   pthread_exit(NULL);
+}
+
+/* Clear the board history */
+void clear_board_history() {
+  for (int i = 0; i < MAX_BOARD_HISTORY; i++) {
+    if (board_history[i] != NULL) {
+      for (int j = 0; j < BOARD_HEIGHT; j++) {
+        free(board_history[i][j]);
+      }
+
+      free(board_history[i]);
+    }
+    board_history[i] = NULL;
+  }
+}
+
+request_arg* construct_request_arg(int connfd, struct sockaddr_in clientaddr, socklen_t clientlen) {
+  request_arg *arg = (request_arg *) Malloc(sizeof(request_arg));
+  arg->connfd = connfd;
+  arg->clientaddr = clientaddr;
+  arg->clientlen = clientlen;
+
+  return targ;
 }

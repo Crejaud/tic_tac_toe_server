@@ -7,8 +7,22 @@
 #define TRUE 0
 #define FALSE 1
 
+#define EMPTY 0
+#define X 1
+#define O 2
+
+#define MAX_BOARD_HISTORY 10
+#define BOARD_WIDTH 3
+#define BOARD_HEIGHT 3
+
 // Our mutex
 pthread_mutex_t mtx;
+
+// The history of the board
+char*** board_history;
+
+// Number of spectators
+int spec_count = 0;
 
 /* This struct is for sending the necessary arguements to a thread to handle a socket */
 typedef struct {
@@ -47,3 +61,7 @@ void process_spec(int fd, struct sockaddr_in clientaddr, socklen_t clientlen);
 void process_p1_thread_func(void *args);
 void process_p2_thread_func(void *args);
 void process_spec_thread_func(void *args);
+
+void clear_board_history();
+
+request_arg* construct_request_arg(int connfd, struct sockaddr_in clientaddr, socklen_t clientlen);
