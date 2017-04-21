@@ -18,7 +18,7 @@
 #define MAX_LINE 1024
 
 // Our mutex
-pthread_mutex_t mtx, board_index_mtx;
+pthread_mutex_t mtx;
 
 // The history of the board
 char*** board_history;

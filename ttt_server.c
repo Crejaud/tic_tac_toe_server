@@ -39,6 +39,8 @@ int main(int argc, char **argv) {
 
   // Initialize mutex
   Pthread_mutex_init(&mtx, NULL);
+  // Initialize cv
+  pthread_cond_init(&current_board_index_cv, NULL);
 
   // start listening for anything
   for (;;) {

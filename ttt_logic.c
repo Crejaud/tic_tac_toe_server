@@ -146,6 +146,8 @@ void process_p1(int fd, struct sockaddr_in clientaddr, socklen_t clientlen) {
 
   // Start processing player 1
 
+  // when making a move, please call pthread_cond_broadcast(&current_board_index_cv) so that the spectators can receive the latest board
+
 }
 
 /* Process player 2 */
@@ -169,6 +171,8 @@ void process_p2(int fd, struct sockaddr_in clientaddr, socklen_t clientlen) {
   }
 
   // Start processing player 2
+
+  // when making a move, please call pthread_cond_broadcast(&current_board_index_cv) so that the spectators can receive the latest board
 
 }
 
@@ -199,7 +203,7 @@ void process_spec(int fd, struct sockaddr_in clientaddr, socklen_t clientlen) {
   while (1) {
     // wait until the current board index changes
     if (board_index >= current_board_index)
-      pthread_cond_wait(&current_board_index_cv, &board_index_mtx);
+      pthread_cond_wait(&current_board_index_cv, NULL);
 
     // loop until the spectator is up to date
     while (board_history[board_index] != NULL) {
