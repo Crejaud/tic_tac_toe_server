@@ -127,15 +127,107 @@ int Open_listenfd(int port) {
 /* Process player 1 */
 void process_p1(int fd, struct sockaddr_in clientaddr, socklen_t clientlen) {
 
+  rio_t rio; /* Rio buffer for calls to buffered rio_readlineb routine */
+  char buf[MAXLINE]; /* General I/O buffer */
+  Rio_readinitb(&rio, fd);
+
+  if ((n = Rio_readinitb_w(&rio, buf, MAXLINE)) <= 0) {
+    printf("process_spec: client issued a bad request (1).\n");
+    Close(fd);
+    return;
+  }
+
+  if (strcmp(buf, JOIN_KEY) != 0) {
+    // Incorrect join key
+    printf("process_spec: incorrect join key: %s", buf);
+    Close(fd);
+    return;
+  }
+
+  // Start processing player 1
+
 }
 
 /* Process player 2 */
 void process_p2(int fd, struct sockaddr_in clientaddr, socklen_t clientlen) {
 
+  rio_t rio; /* Rio buffer for calls to buffered rio_readlineb routine */
+  char buf[MAXLINE]; /* General I/O buffer */
+  Rio_readinitb(&rio, fd);
+
+  if ((n = Rio_readinitb_w(&rio, buf, MAXLINE)) <= 0) {
+    printf("process_spec: client issued a bad request (1).\n");
+    Close(fd);
+    return;
+  }
+
+  if (strcmp(buf, JOIN_KEY) != 0) {
+    // Incorrect join key
+    printf("process_spec: incorrect join key: %s", buf);
+    Close(fd);
+    return;
+  }
+
+  // Start processing player 2
+
 }
 
 /* Process spectator */
 void process_spec(int fd, struct sockaddr_in clientaddr, socklen_t clientlen) {
+
+  rio_t rio; /* Rio buffer for calls to buffered rio_readlineb routine */
+  char buf[MAXLINE]; /* General I/O buffer */
+  int n;
+  Rio_readinitb(&rio, fd);
+
+  if ((n = Rio_readinitb_w(&rio, buf, MAXLINE)) <= 0) {
+    printf("process_spec: client issued a bad request (1).\n");
+    Close(fd);
+    return;
+  }
+
+  if (strcmp(buf, JOIN_KEY) != 0) {
+    // Incorrect join key
+    printf("process_spec: incorrect join key: %s", buf);
+    Close(fd);
+    return;
+  }
+
+  // local board index
+  int board_index = 0;
+
+  while (1) {
+    // wait until the current board index changes
+    if (board_index >= current_board_index)
+      pthread_cond_wait(&current_board_index_cv, &board_index_mtx);
+
+    // loop until the spectator is up to date
+    while (board_history[board_index] != NULL) {
+      char** tic_tac_toe_board = construct_tic_tac_toe_board(board_index);
+
+      // BOARD_HEIGHT + 2 because a board has tic tac toe board looks like this
+      // O|X|O   row 0
+      // -----   row 1
+      // X| |    row 2
+      // -----   row 3 (BOARD_HEIGHT)
+      // O| |X   row 4
+      // So there are 5 rows total (5 = BOARD_HEIGHT + 2)
+      for (int i = 0; i < BOARD_HEIGHT + 2; i++) {
+        // may have to be strlen(tic_tac_toe_board[i]) + 1 because of '\0' terminator
+        Rio_writen_w(fd, tic_tac_toe_board[i], strlen(tic_tac_toe_board[i]));
+      }
+
+      // increment local board index
+      board_index++;
+
+      // if board index is now the last possible board, then might as well close now
+      if (board_index == MAX_BOARD_HISTORY - 1) {
+        // this is the last possible board, so close connection because game is over
+        Close(fd);
+        return;
+      }
+    }
+  }
 
 }
 
@@ -183,4 +275,225 @@ request_arg* construct_request_arg(int connfd, struct sockaddr_in clientaddr, so
   arg->clientlen = clientlen;
 
   return targ;
+}
+
+/*********************************************************************
+ * The Rio package - robust I/O functions
+ **********************************************************************/
+/*
+ * rio_readn - robustly read n bytes (unbuffered)
+ */
+/* $begin rio_readn */
+ssize_t rio_readn(int fd, void *usrbuf, size_t n) {
+  size_t nleft = n;
+  ssize_t nread;
+  char *bufp = usrbuf;
+
+  while (nleft > 0) {
+    if ((nread = read(fd, bufp, nleft)) < 0) {
+      if (errno == EINTR) /* interrupted by sig handler return */
+        nread = 0;        /* and call read() again */
+      else
+        return -1; /* errno set by read() */
+    } else if (nread == 0)
+      break; /* EOF */
+    nleft -= nread;
+    bufp += nread;
+  }
+  return (n - nleft); /* return >= 0 */
+}
+/* $end rio_readn */
+
+/*
+ * rio_writen - robustly write n bytes (unbuffered)
+ */
+/* $begin rio_writen */
+ssize_t rio_writen(int fd, void *usrbuf, size_t n) {
+  size_t nleft = n;
+  ssize_t nwritten;
+  char *bufp = usrbuf;
+
+  while (nleft > 0) {
+    if ((nwritten = write(fd, bufp, nleft)) <= 0) {
+      if (errno == EINTR) /* interrupted by sig handler return */
+        nwritten = 0;     /* and call write() again */
+      else
+        return -1; /* errorno set by write() */
+    }
+    nleft -= nwritten;
+    bufp += nwritten;
+  }
+  return n;
+}
+/* $end rio_writen */
+
+/*
+ * rio_read - This is a wrapper for the Unix read() function that
+ *    transfers min(n, rio_cnt) bytes from an internal buffer to a user
+ *    buffer, where n is the number of bytes requested by the user and
+ *    rio_cnt is the number of unread bytes in the internal buffer. On
+ *    entry, rio_read() refills the internal buffer via a call to
+ *    read() if the internal buffer is empty.
+ */
+/* $begin rio_read */
+static ssize_t rio_read(rio_t *rp, char *usrbuf, size_t n) {
+  int cnt;
+
+  while (rp->rio_cnt <= 0) { /* refill if buf is empty */
+    rp->rio_cnt = read(rp->rio_fd, rp->rio_buf, sizeof(rp->rio_buf));
+    if (rp->rio_cnt < 0) {
+      if (errno != EINTR) /* interrupted by sig handler return */
+        return -1;
+    } else if (rp->rio_cnt == 0) /* EOF */
+      return 0;
+    else
+      rp->rio_bufptr = rp->rio_buf; /* reset buffer ptr */
+  }
+
+  /* Copy min(n, rp->rio_cnt) bytes from internal buf to user buf */
+  cnt = n;
+  if (rp->rio_cnt < n)
+    cnt = rp->rio_cnt;
+  memcpy(usrbuf, rp->rio_bufptr, cnt);
+  rp->rio_bufptr += cnt;
+  rp->rio_cnt -= cnt;
+  return cnt;
+}
+/* $end rio_read */
+
+/*
+ * rio_readinitb - Associate a descriptor with a read buffer and reset buffer
+ */
+/* $begin rio_readinitb */
+void rio_readinitb(rio_t *rp, int fd) {
+  rp->rio_fd = fd;
+  rp->rio_cnt = 0;
+  rp->rio_bufptr = rp->rio_buf;
+}
+/* $end rio_readinitb */
+
+/*
+ * rio_readnb - Robustly read n bytes (buffered)
+ */
+/* $begin rio_readnb */
+ssize_t rio_readnb(rio_t *rp, void *usrbuf, size_t n) {
+  size_t nleft = n;
+  ssize_t nread;
+  char *bufp = usrbuf;
+
+  while (nleft > 0) {
+    if ((nread = rio_read(rp, bufp, nleft)) < 0) {
+      if (errno == EINTR) /* interrupted by sig handler return */
+        nread = 0;        /* call read() again */
+      else
+        return -1; /* errno set by read() */
+    } else if (nread == 0)
+      break; /* EOF */
+    nleft -= nread;
+    bufp += nread;
+  }
+  return (n - nleft); /* return >= 0 */
+}
+/* $end rio_readnb */
+
+/*
+ * rio_readlineb - robustly read a text line (buffered)
+ */
+/* $begin rio_readlineb */
+ssize_t rio_readlineb(rio_t *rp, void *usrbuf, size_t maxlen) {
+  int n, rc;
+  char c, *bufp = usrbuf;
+
+  for (n = 1; n < maxlen; n++) {
+    if ((rc = rio_read(rp, &c, 1)) == 1) {
+      *bufp++ = c;
+      if (c == '\n')
+        break;
+    } else if (rc == 0) {
+      if (n == 1)
+        return 0; /* EOF, no data read */
+      else
+        break; /* EOF, some data was read */
+    } else
+      return -1; /* error */
+  }
+  *bufp = 0;
+  return n;
+}
+/* $end rio_readlineb */
+
+/**********************************
+ * Wrappers for robust I/O routines
+ **********************************/
+ssize_t Rio_readn(int fd, void *ptr, size_t nbytes) {
+  ssize_t n;
+
+  if ((n = rio_readn(fd, ptr, nbytes)) < 0)
+    unix_error("Rio_readn error");
+  return n;
+}
+
+void Rio_writen(int fd, void *usrbuf, size_t n) {
+  if (rio_writen(fd, usrbuf, n) != n)
+    unix_error("Rio_writen error");
+}
+
+void Rio_readinitb(rio_t *rp, int fd) { rio_readinitb(rp, fd); }
+
+ssize_t Rio_readnb(rio_t *rp, void *usrbuf, size_t n) {
+  ssize_t rc;
+
+  if ((rc = rio_readnb(rp, usrbuf, n)) < 0)
+    unix_error("Rio_readnb error");
+  return rc;
+}
+
+ssize_t Rio_readlineb(rio_t *rp, void *usrbuf, size_t maxlen) {
+  ssize_t rc;
+
+  if ((rc = rio_readlineb(rp, usrbuf, maxlen)) < 0)
+    unix_error("Rio_readlineb error");
+  return rc;
+}
+
+/* Takes a board index and constructs a printable tic tac toe board from board_history */
+char** construct_tic_tac_toe_board(int board_index) {
+  if (board_history[board_index] == NULL) {
+    return NULL;
+  }
+
+  char** board_to_be_printed = (char **) Malloc((BOARD_HEIGHT+2) * sizeof(char));
+
+  for (int i = 0; i < BOARD_HEIGHT+2; i++) {
+    char* board_row = (char *) Malloc(BOARD_WIDTH+3 * sizeof(char));
+    if (i % 2 == 1) {
+      for (int j = 0; j < BOARD_WIDTH+2; j++) {
+        board_row[j] = '-';
+      }
+    }
+    else {
+      for (int j = 0; j < BOARD_WIDTH+2; j++) {
+        if (j % 2 == 1) {
+          board_row[j] = '|';
+        }
+        else {
+          int actual_row = i/2;
+          int actual_col = j/2;
+          if (board_history[board_index][actual_row][actual_col] == X) {
+            board_row[j] = 'X';
+          }
+          else if (board_history[board_index][actual_row][actual_col] == O) {
+            board_row[j] = 'O';
+          }
+          else {
+            board_row[j] = ' ';
+          }
+        }
+      }
+    }
+    board_row[BOARD_WIDTH+2] = '\0';
+    board_to_be_printed[i] = board_row;
+  }
+
+  return board_to_be_printed;
 }

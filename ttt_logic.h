@@ -15,14 +15,23 @@
 #define BOARD_WIDTH 3
 #define BOARD_HEIGHT 3
 
+#define MAX_LINE 1024
+
 // Our mutex
-pthread_mutex_t mtx;
+pthread_mutex_t mtx, board_index_mtx;
 
 // The history of the board
 char*** board_history;
 
+// To join the server, this is the key that needs to be requested
+char* JOIN_KEY = "join";
+
 // Number of spectators
 int spec_count = 0;
+
+// Current board index
+int current_board_index = 0;
+pthread_cond_t current_board_index_cv;
 
 /* This struct is for sending the necessary arguements to a thread to handle a socket */
 typedef struct {
@@ -30,6 +39,17 @@ typedef struct {
         struct sockaddr_in clientaddr;  /* the sockaddr_in for the client */
         socklen_t clientlen;            /* the client address length */
 } request_arg;
+
+/* Persistent state for the robust I/O (Rio) package */
+/* $begin rio_t */
+#define RIO_BUFSIZE 8192
+typedef struct {
+        int rio_fd;            /* descriptor for this internal buf */
+        int rio_cnt;           /* unread bytes in internal buf */
+        char *rio_bufptr;      /* next unread byte in internal buf */
+        char rio_buf[RIO_BUFSIZE]; /* internal buffer */
+} rio_t;
+/* $end rio_t */
 
 void unix_error(char *msg);
 
@@ -65,3 +85,17 @@ void process_spec_thread_func(void *args);
 void clear_board_history();
 
 request_arg* construct_request_arg(int connfd, struct sockaddr_in clientaddr, socklen_t clientlen);
+
+/* Rio (Robust I/O) package */
+ssize_t rio_readn(int fd, void *usrbuf, size_t n);
+ssize_t rio_writen(int fd, void *usrbuf, size_t n);
+void rio_readinitb(rio_t *rp, int fd);
+ssize_t rio_readnb(rio_t *rp, void *usrbuf, size_t n);
+ssize_t rio_readlineb(rio_t *rp, void *usrbuf, size_t maxlen);
+
+/* Wrappers for Rio package */
+ssize_t Rio_readn(int fd, void *usrbuf, size_t n);
+void Rio_writen(int fd, void *usrbuf, size_t n);
+void Rio_readinitb(rio_t *rp, int fd);
+ssize_t Rio_readnb(rio_t *rp, void *usrbuf, size_t n);
+ssize_t Rio_readlineb(rio_t *rp, void *usrbuf, size_t maxlen);
