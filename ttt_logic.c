@@ -124,6 +124,59 @@ void Pthread_create(pthread_t *tidp, pthread_attr_t *attrp,
     return rc;
   }
 
+  /* Tries to make a move, return 1 if move is made, 0 if invalid */
+  int make_move(int player, int x, int y) {
+
+    //check if the spot is vacant
+    if(board_history[current_board_index][x][y]!='x' || board_history[current_board_index][x][y]!='o') {
+      //make the move
+      if(player == 1) {
+        board_history[current_board_index][x][y] = 'x';
+      }
+      else {
+        board_history[current_board_index][x][y] = 'o';
+      }
+      //check to see if the player won
+      if(make_move(x,y) == 1) {
+        printf("make_move: player %i won!\n", player);
+        //end game code?
+      }
+      ++current_board_index; //increment board index
+      pthread_cond_broadcast(&current_board_index_cv); //alert spectators
+      return 1;
+    }
+    else {
+      printf("make_move: player %i issued a bad request (1).\n",player);
+      return 0;
+    }
+
+  }
+
+  /* returns 1 if the last move was a winning move */
+  int check_winner(int x, int y) {
+    char** board = board_history[current_board_index];
+
+    //check row for winner
+    if((board[x][0] == board[x][1]) && (board[x][0] == board[x][2])) {
+      return 1;
+    }
+    //check col for winner
+    if((board[0][y] == board[1][y]) && (board[0][y] == board[2]y])) {
+      return 1;
+    }
+    //check diagonal for winner
+    if((board[0][0] == board[1][1]) || (board[0][0] == board[2][2])) {
+      return 1;
+    }
+    //check diagonal for winner
+    if((board[0][2] == board[1][1]) || (board[0][2] == board[2][0])) {
+      return 1;
+    }
+
+    return 0;
+  }
+
+
   /* Process player 1 */
   void process_p1(int fd, struct sockaddr_in clientaddr, socklen_t clientlen) {
 
@@ -160,6 +213,15 @@ void Pthread_create(pthread_t *tidp, pthread_attr_t *attrp,
         printf("process_p1: p1 moved out of turn.\n");
         continue; //skip to next p1 input
       }
+
+      //check for correct format
+      if((n!=3) || (buf[1]!=" ")) {
+        printf("process_p1: p1 sent invalid move format.\n");
+        continue; //skip to next p1 input
+      }
+
+      //try to make move
+      make_move(1,buf[0],buf[2]);
     }
 
   }
@@ -187,6 +249,29 @@ void Pthread_create(pthread_t *tidp, pthread_attr_t *attrp,
     // Start processing player 2
 
     // when making a move, please call pthread_cond_broadcast(&current_board_index_cv) so that the spectators can receive the latest board
+
+    while (1) {
+      if ((n = Rio_readlineb_w(&rio, buf, MAXLINE)) <= 0) {
+        printf("process_p2: client issued a bad request (1).\n");
+        close(fd);
+        break;
+      }
+
+      //p2 only allowed to go when current_board_index is odd
+      if(current_board_index%2 != 1) {
+        printf("process_p2: p2 moved out of turn.\n");
+        continue; //skip to next p2 input
+      }
+
+      //check for correct format
+      if((n!=3) || (buf[1]!=" ")) {
+        printf("process_p2: p2 sent invalid move format.\n");
+        continue; //skip to next p2 input
+      }
+
+      //try to make move
+      make_move(2,buf[0],buf[2]);
+    }
 
   }
 

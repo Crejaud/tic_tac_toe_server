@@ -74,6 +74,9 @@ int open_listenfd(int portno);
 /* Wrapper for open_listenfd */
 int Open_listenfd(int portno);
 
+int make_move(int player, int x, int y);
+int check_winner(int x, int y)
+
 void process_p1(int fd, struct sockaddr_in clientaddr, socklen_t clientlen);
 void process_p2(int fd, struct sockaddr_in clientaddr, socklen_t clientlen);
 void process_spec(int fd, struct sockaddr_in clientaddr, socklen_t clientlen);
