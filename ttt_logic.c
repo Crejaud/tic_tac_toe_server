@@ -143,7 +143,7 @@ void Pthread_create(pthread_t *tidp, pthread_attr_t *attrp,
         board_history[current_board_index][x][y] = 'o';
       }
       //check to see if the player won
-      if(make_move(x,y) == 1) {
+      if(check_winner(x,y) == 1) {
         printf("make_move: player %i won!\n", player);
         //end game code?
       }
