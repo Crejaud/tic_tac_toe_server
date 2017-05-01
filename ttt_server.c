@@ -1,5 +1,8 @@
 #include "ttt_logic.h"
 
+int spec_count = 0;
+int current_board_index = 2;
+
 int main(int argc, char **argv) {
   if (argc != 2) {
     fprintf(stderr, "Usage: %s <port number>\n", argv[0]);
@@ -22,9 +25,25 @@ int main(int argc, char **argv) {
 
   // there can be at most 10 different boards in tic tac toe
   board_history = (char ***) Malloc(MAX_BOARD_HISTORY * sizeof(char**));
+  for (int i = 0; i < MAX_BOARD_HISTORY; i++) {
+    board_history[i] = NULL;
+  }
 
   // Ensure every board is set to NULL
   clear_board_history();
+
+  for (int i = 0; i < 2; i++) {
+    board_history[i] = (char **) Malloc(BOARD_HEIGHT * sizeof(char*));
+    for (int j = 0; j < BOARD_HEIGHT; j++) {
+      board_history[i][j] = (char *) Malloc(BOARD_WIDTH * sizeof(char));
+      for (int k = 0; k < BOARD_WIDTH; k++) {
+        if (j % 2 == 0)
+          board_history[i][j][k] = X;
+        else
+          board_history[i][j][k] = O;
+      }
+    }
+  }
 
   /* Create a server file descriptor */
   port = atoi(argv[1]);
@@ -40,15 +59,20 @@ int main(int argc, char **argv) {
   // Initialize mutex
   Pthread_mutex_init(&mtx, NULL);
   Pthread_mutex_init(&unused_mtx, NULL);
+
   // Initialize cv
   pthread_cond_init(&current_board_index_cv, NULL);
+
+  printf("starting to listen\n");
 
   // start listening for anything
   for (;;) {
       clientlen = sizeof(clientaddr);
+      printf("listening\n");
 
       if (is_player_1_taken == FALSE) {
         p1_fd = Accept(listenfd, (struct sockaddr *) &clientaddr, &clientlen);
+        printf("Accepting player 1\n");
         is_player_1_taken = TRUE;
 
         // construct argument to
@@ -59,6 +83,7 @@ int main(int argc, char **argv) {
       }
       else if (is_player_2_taken == FALSE) {
         p2_fd = Accept(listenfd, (struct sockaddr *) &clientaddr, &clientlen);
+        printf("Accepting player 2\n");
         is_player_2_taken = TRUE;
 
         // construct argument to
@@ -70,7 +95,7 @@ int main(int argc, char **argv) {
       else {
         // is a spectator!
         spec_fd = Accept(listenfd, (struct sockaddr *) &clientaddr, &clientlen);
-
+        printf("Accepting spectator\n");
         // Increment the number of spectators
         spec_count++;
 

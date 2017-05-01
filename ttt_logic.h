@@ -13,7 +13,6 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/mman.h>
-#include <errno.h>
 #include <math.h>
 #include <sys/socket.h>
 #include <netdb.h>
@@ -44,13 +43,13 @@ pthread_mutex_t mtx, unused_mtx;
 char*** board_history;
 
 // To join the server, this is the key that needs to be requested
-char* JOIN_KEY = "join";
+static const char* JOIN_KEY = "join";
 
 // Number of spectators
-int spec_count = 0;
+extern int spec_count;
 
 // Current board index
-int current_board_index = 0;
+extern int current_board_index;
 pthread_cond_t current_board_index_cv;
 
 /* This struct is for sending the necessary arguements to a thread to handle a socket */
@@ -127,3 +126,5 @@ ssize_t Rio_readlineb_w(rio_t *rp, void *usrbuf, size_t maxlen);
 void Rio_writen_w(int fd, void *usrbuf, size_t n);
 
 char** construct_tic_tac_toe_board(int board_index);
+
+int is_buf_join_key(char *buf);

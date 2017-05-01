@@ -138,15 +138,15 @@ void process_p1(int fd, struct sockaddr_in clientaddr, socklen_t clientlen) {
   Rio_readinitb(&rio, fd);
   int n;
 
-  if ((n = Rio_readlineb_w(&rio, buf, MAXLINE)) <= 0) {
+  if ((n = Rio_readlineb_w(&rio, buf, sizeof(JOIN_KEY))) <= 0) {
     printf("process_spec: client issued a bad request (1).\n");
     Close(fd);
     return;
   }
 
-  if (strcmp(buf, JOIN_KEY) != 0) {
+  if (is_buf_join_key(buf) == FALSE) {
     // Incorrect join key
-    printf("process_spec: incorrect join key: %s", buf);
+    printf("process_spec: (p1) incorrect join key: %s | size = %d", buf, sizeof(buf));
     Close(fd);
     return;
   }
@@ -165,15 +165,15 @@ void process_p2(int fd, struct sockaddr_in clientaddr, socklen_t clientlen) {
   Rio_readinitb(&rio, fd);
   int n;
 
-  if ((n = Rio_readlineb_w(&rio, buf, MAXLINE)) <= 0) {
+  if ((n = Rio_readlineb_w(&rio, buf, sizeof(JOIN_KEY))) <= 0) {
     printf("process_spec: client issued a bad request (1).\n");
     Close(fd);
     return;
   }
 
-  if (strcmp(buf, JOIN_KEY) != 0) {
+  if (is_buf_join_key(buf) == FALSE) {
     // Incorrect join key
-    printf("process_spec: incorrect join key: %s", buf);
+    printf("process_spec: (p2) incorrect join key: %s | size = %d", buf, sizeof(buf));
     Close(fd);
     return;
   }
@@ -192,15 +192,15 @@ void process_spec(int fd, struct sockaddr_in clientaddr, socklen_t clientlen) {
   int n;
   Rio_readinitb(&rio, fd);
 
-  if ((n = Rio_readlineb_w(&rio, buf, MAXLINE)) <= 0) {
+  if ((n = Rio_readlineb_w(&rio, buf, sizeof(JOIN_KEY))) <= 0) {
     printf("process_spec: client issued a bad request (1).\n");
     Close(fd);
     return;
   }
 
-  if (strcmp(buf, JOIN_KEY) != 0) {
+  if (is_buf_join_key(buf) == FALSE) {
     // Incorrect join key
-    printf("process_spec: incorrect join key: %s", buf);
+    printf("process_spec: (spec) incorrect join key: %s | size = %d", buf, sizeof(buf));
     Close(fd);
     return;
   }
@@ -210,6 +210,7 @@ void process_spec(int fd, struct sockaddr_in clientaddr, socklen_t clientlen) {
 
   while (1) {
     // wait until the current board index changes
+    printf("current board index = %d\n", current_board_index);
     if (board_index >= current_board_index)
       pthread_cond_wait(&current_board_index_cv, &unused_mtx);
 
@@ -228,6 +229,16 @@ void process_spec(int fd, struct sockaddr_in clientaddr, socklen_t clientlen) {
         // may have to be strlen(tic_tac_toe_board[i]) + 1 because of '\0' terminator
         Rio_writen_w(fd, tic_tac_toe_board[i], strlen(tic_tac_toe_board[i]));
       }
+      // free tic_tac_toe_board
+      for (int i = 0; i < BOARD_HEIGHT+2; i++) {
+        printf("%s", tic_tac_toe_board[i]);
+        free(tic_tac_toe_board[i]);
+      }
+      printf("each row freed correctly\n");
+      free(tic_tac_toe_board);
+      printf("tic_tac_toe_board correctly freed\n");
+
+      Rio_writen_w(fd, "\n", 1);
 
       // increment local board index
       board_index++;
@@ -515,10 +526,10 @@ char** construct_tic_tac_toe_board(int board_index) {
     return NULL;
   }
 
-  char** board_to_be_printed = (char **) Malloc((BOARD_HEIGHT+2) * sizeof(char));
+  char** board_to_be_printed = (char **) calloc(BOARD_HEIGHT+2, (BOARD_HEIGHT+2) * sizeof(char*));
 
   for (int i = 0; i < BOARD_HEIGHT+2; i++) {
-    char* board_row = (char *) Malloc(BOARD_WIDTH+3 * sizeof(char));
+    char* board_row = (char *) calloc(BOARD_WIDTH+3, (BOARD_WIDTH+3) * sizeof(char));
     if (i % 2 == 1) {
       for (int j = 0; j < BOARD_WIDTH+2; j++) {
         board_row[j] = '-';
@@ -544,8 +555,10 @@ char** construct_tic_tac_toe_board(int board_index) {
         }
       }
     }
-    board_row[BOARD_WIDTH+2] = '\0';
+    board_row[BOARD_WIDTH+2] = '\n';
     board_to_be_printed[i] = board_row;
+
+    printf("row: %s", board_to_be_printed[i]);
   }
 
   return board_to_be_printed;
@@ -556,4 +569,11 @@ void Close(int fd) {
 
   if ((rc = close(fd)) < 0)
     unix_error("Close error");
+}
+
+int is_buf_join_key(char *buf) {
+  if (buf[0] == JOIN_KEY[0] && buf[1] == JOIN_KEY[1] && buf[2] == JOIN_KEY[2] && buf[3] == JOIN_KEY[3])
+    return TRUE;
+
+  return FALSE;
 }
