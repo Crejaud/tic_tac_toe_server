@@ -3,6 +3,24 @@
 #include <unistd.h>
 #include <errno.h>
 #include <pthread.h>
+#include <string.h>
+#include <ctype.h>
+#include <signal.h>
+#include <sys/select.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <errno.h>
+#include <math.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <sys/ioctl.h>
+#include <sys/queue.h>
 
 #define TRUE 0
 #define FALSE 1
@@ -15,10 +33,12 @@
 #define BOARD_WIDTH 3
 #define BOARD_HEIGHT 3
 
-#define MAX_LINE 1024
+#define MAXLINE 1024
+
+#define LISTENQ  1024  /* second argument to listen() */
 
 // Our mutex
-pthread_mutex_t mtx;
+pthread_mutex_t mtx, unused_mtx;
 
 // The history of the board
 char*** board_history;
@@ -52,6 +72,7 @@ typedef struct {
 /* $end rio_t */
 
 void unix_error(char *msg);
+void posix_error(int code, char *msg);
 
 int Accept(int s, struct sockaddr *addr, socklen_t *addrlen);
 
@@ -73,6 +94,8 @@ void *Malloc(size_t size);
 int open_listenfd(int portno);
 /* Wrapper for open_listenfd */
 int Open_listenfd(int portno);
+
+void Close(int fd);
 
 void process_p1(int fd, struct sockaddr_in clientaddr, socklen_t clientlen);
 void process_p2(int fd, struct sockaddr_in clientaddr, socklen_t clientlen);
@@ -99,5 +122,8 @@ void Rio_writen(int fd, void *usrbuf, size_t n);
 void Rio_readinitb(rio_t *rp, int fd);
 ssize_t Rio_readnb(rio_t *rp, void *usrbuf, size_t n);
 ssize_t Rio_readlineb(rio_t *rp, void *usrbuf, size_t maxlen);
+ssize_t Rio_readn_w(int fd, void *ptr, size_t nbytes);
+ssize_t Rio_readlineb_w(rio_t *rp, void *usrbuf, size_t maxlen);
+void Rio_writen_w(int fd, void *usrbuf, size_t n);
 
 char** construct_tic_tac_toe_board(int board_index);

@@ -6,6 +6,12 @@ void unix_error(char *msg) /* unix-style error */
   exit(0);
 }
 
+void posix_error(int code, char *msg) /* posix-style error */
+{
+  fprintf(stderr, "%s: %s\n", msg, strerror(code));
+  exit(0);
+}
+
 /****************************
  * Sockets interface wrappers
  ****************************/
@@ -130,8 +136,9 @@ void process_p1(int fd, struct sockaddr_in clientaddr, socklen_t clientlen) {
   rio_t rio; /* Rio buffer for calls to buffered rio_readlineb routine */
   char buf[MAXLINE]; /* General I/O buffer */
   Rio_readinitb(&rio, fd);
+  int n;
 
-  if ((n = Rio_readinitb_w(&rio, buf, MAXLINE)) <= 0) {
+  if ((n = Rio_readlineb_w(&rio, buf, MAXLINE)) <= 0) {
     printf("process_spec: client issued a bad request (1).\n");
     Close(fd);
     return;
@@ -156,8 +163,9 @@ void process_p2(int fd, struct sockaddr_in clientaddr, socklen_t clientlen) {
   rio_t rio; /* Rio buffer for calls to buffered rio_readlineb routine */
   char buf[MAXLINE]; /* General I/O buffer */
   Rio_readinitb(&rio, fd);
+  int n;
 
-  if ((n = Rio_readinitb_w(&rio, buf, MAXLINE)) <= 0) {
+  if ((n = Rio_readlineb_w(&rio, buf, MAXLINE)) <= 0) {
     printf("process_spec: client issued a bad request (1).\n");
     Close(fd);
     return;
@@ -184,7 +192,7 @@ void process_spec(int fd, struct sockaddr_in clientaddr, socklen_t clientlen) {
   int n;
   Rio_readinitb(&rio, fd);
 
-  if ((n = Rio_readinitb_w(&rio, buf, MAXLINE)) <= 0) {
+  if ((n = Rio_readlineb_w(&rio, buf, MAXLINE)) <= 0) {
     printf("process_spec: client issued a bad request (1).\n");
     Close(fd);
     return;
@@ -203,7 +211,7 @@ void process_spec(int fd, struct sockaddr_in clientaddr, socklen_t clientlen) {
   while (1) {
     // wait until the current board index changes
     if (board_index >= current_board_index)
-      pthread_cond_wait(&current_board_index_cv, NULL);
+      pthread_cond_wait(&current_board_index_cv, &unused_mtx);
 
     // loop until the spectator is up to date
     while (board_history[board_index] != NULL) {
@@ -278,7 +286,7 @@ request_arg* construct_request_arg(int connfd, struct sockaddr_in clientaddr, so
   arg->clientaddr = clientaddr;
   arg->clientlen = clientlen;
 
-  return targ;
+  return arg;
 }
 
 /*********************************************************************
@@ -460,6 +468,47 @@ ssize_t Rio_readlineb(rio_t *rp, void *usrbuf, size_t maxlen) {
   return rc;
 }
 
+/*
+ * Rio_readn_w - A wrapper function for rio_readn (csapp.c) that
+ * prints a warning message when a read fails instead of terminating
+ * the process.
+ */
+ssize_t Rio_readn_w(int fd, void *ptr, size_t nbytes) {
+  ssize_t n;
+
+  if ((n = rio_readn(fd, ptr, nbytes)) < 0) {
+    printf("Warning: rio_readn failed\n");
+    return 0;
+  }
+  return n;
+}
+
+/*
+ * Rio_readlineb_w - A wrapper for rio_readlineb (csapp.c) that
+ * prints a warning when a read fails instead of terminating
+ * the process.
+ */
+ssize_t Rio_readlineb_w(rio_t *rp, void *usrbuf, size_t maxlen) {
+  ssize_t rc;
+
+  if ((rc = rio_readlineb(rp, usrbuf, maxlen)) < 0) {
+    printf("Warning: rio_readlineb failed\n");
+    return 0;
+  }
+  return rc;
+}
+
+/*
+ * Rio_writen_w - A wrapper function for rio_writen (csapp.c) that
+ * prints a warning when a write fails, instead of terminating the
+ * process.
+ */
+void Rio_writen_w(int fd, void *usrbuf, size_t n) {
+  if (rio_writen(fd, usrbuf, n) != n) {
+    printf("Warning: rio_writen failed.\n");
+  }
+}
+
 /* Takes a board index and constructs a printable tic tac toe board from board_history */
 char** construct_tic_tac_toe_board(int board_index) {
   if (board_history[board_index] == NULL) {
@@ -500,4 +549,11 @@ char** construct_tic_tac_toe_board(int board_index) {
   }
 
   return board_to_be_printed;
+}
+
+void Close(int fd) {
+  int rc;
+
+  if ((rc = close(fd)) < 0)
+    unix_error("Close error");
 }
