@@ -134,13 +134,13 @@ void Pthread_create(pthread_t *tidp, pthread_attr_t *attrp,
   int make_move(int player, int x, int y) {
 
     //check if the spot is vacant
-    if(board_history[current_board_index][x][y]!='x' || board_history[current_board_index][x][y]!='o') {
+    if(board_history[current_board_index][x][y]!=X_LITERAL || board_history[current_board_index][x][y]!=O_LITERAL) {
       //make the move
       if(player == 1) {
-        board_history[current_board_index][x][y] = 'x';
+        board_history[current_board_index][x][y] = X_LITERAL;
       }
       else {
-        board_history[current_board_index][x][y] = 'o';
+        board_history[current_board_index][x][y] = O_LITERAL;
       }
       //check to see if the player won
       if(check_winner(x,y) == 1) {
@@ -167,7 +167,7 @@ void Pthread_create(pthread_t *tidp, pthread_attr_t *attrp,
       return 1;
     }
     //check col for winner
-    if((board[0][y] == board[1][y]) && (board[0][y] == board[2]y])) {
+    if((board[0][y] == board[1][y]) && (board[0][y] == board[2][y])) {
       return 1;
     }
     //check diagonal for winner
@@ -215,19 +215,19 @@ void Pthread_create(pthread_t *tidp, pthread_attr_t *attrp,
       }
 
       //p1 only allowed to go when current_board_index is even
-      if(current_board_index%2 != 0) {
+      if(current_board_index%2 != 1) {
         printf("process_p1: p1 moved out of turn.\n");
         continue; //skip to next p1 input
       }
 
       //check for correct format
-      if((n!=3) || (buf[1]!=" ")) {
+      if(buf[1]!=' ') {
         printf("process_p1: p1 sent invalid move format.\n");
         continue; //skip to next p1 input
       }
 
       //try to make move
-      make_move(1,buf[0],buf[2]);
+      make_move(1,atoi(buf[0]),atoi(buf[2]));
     }
 
   }
@@ -264,13 +264,13 @@ void Pthread_create(pthread_t *tidp, pthread_attr_t *attrp,
       }
 
       //p2 only allowed to go when current_board_index is odd
-      if(current_board_index%2 != 1) {
+      if(current_board_index%2 != 0) {
         printf("process_p2: p2 moved out of turn.\n");
         continue; //skip to next p2 input
       }
 
       //check for correct format
-      if((n!=3) || (buf[1]!=" ")) {
+      if(buf[1]!=' ') {
         printf("process_p2: p2 sent invalid move format.\n");
         continue; //skip to next p2 input
       }
@@ -289,7 +289,7 @@ void Pthread_create(pthread_t *tidp, pthread_attr_t *attrp,
     int n;
     Rio_readinitb(&rio, fd);
 
-    if ((n = Rio_readinitb_w(&rio, buf, MAXLINE)) <= 0) {
+    if ((n = Rio_readlineb_w(&rio, buf, MAXLINE)) <= 0) {
       printf("process_spec: client issued a bad request (1).\n");
       Close(fd);
       return;
@@ -302,8 +302,9 @@ void Pthread_create(pthread_t *tidp, pthread_attr_t *attrp,
     while (1) {
       // wait until the current board index changes
       printf("current board index = %d\n", current_board_index);
+      Pthread_mutex_lock(&current_board_index_mtx);
       if (board_index >= current_board_index)
-      pthread_cond_wait(&current_board_index_cv, &unused_mtx);
+      pthread_cond_wait(&current_board_index_cv, &current_board_index_mtx);
 
       // loop until the spectator is up to date
       while (board_history[board_index] != NULL) {
@@ -341,6 +342,7 @@ void Pthread_create(pthread_t *tidp, pthread_attr_t *attrp,
           return;
         }
       }
+      Pthread_mutex_unlock(&current_board_index_mtx);
     }
 
   }
@@ -669,5 +671,3 @@ void Pthread_create(pthread_t *tidp, pthread_attr_t *attrp,
 
     return FALSE;
   }
-
-}

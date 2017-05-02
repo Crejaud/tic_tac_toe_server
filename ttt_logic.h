@@ -28,6 +28,9 @@
 #define X 1
 #define O 2
 
+#define X_LITERAL 'X'
+#define O_LITERAL 'O'
+
 #define MAX_BOARD_HISTORY 10
 #define BOARD_WIDTH 3
 #define BOARD_HEIGHT 3
@@ -37,7 +40,7 @@
 #define LISTENQ  1024  /* second argument to listen() */
 
 // Our mutex
-pthread_mutex_t mtx, unused_mtx;
+pthread_mutex_t mtx, current_board_index_mtx;
 
 // The history of the board
 char*** board_history;
@@ -95,8 +98,6 @@ int open_listenfd(int portno);
 int Open_listenfd(int portno);
 
 void Close(int fd);
-int make_move(int player, int x, int y);
-int check_winner(int x, int y);
 
 void process_p1(int fd, struct sockaddr_in clientaddr, socklen_t clientlen);
 void process_p2(int fd, struct sockaddr_in clientaddr, socklen_t clientlen);
