@@ -2,6 +2,7 @@
 
 int spec_count = 0;
 int current_board_index = 1;
+int winning_player = 0;
 
 int main(int argc, char **argv) {
   if (argc != 2) {
