@@ -1,5 +1,6 @@
 #include "ttt_logic.h"
 
+//Corentin Rejaud
 int spec_count = 0;
 int current_board_index = 1;
 int winning_player = 0;
@@ -66,6 +67,7 @@ int main(int argc, char **argv) {
 
   printf("starting to listen\n");
 
+//Philip Mak
   // start listening for anything
   for (;;) {
     clientlen = sizeof(clientaddr);

@@ -130,6 +130,8 @@ void Pthread_create(pthread_t *tidp, pthread_attr_t *attrp,
     return rc;
   }
 
+//Harry Li, Philip Mak
+
   /* Tries to make a move, return 1 if move is made, 0 if invalid */
   int make_move(int player, int x, int y) {
 
@@ -183,24 +185,20 @@ void Pthread_create(pthread_t *tidp, pthread_attr_t *attrp,
 
     //check row for winner
     if((board[x][0] == board[x][1]) && (board[x][0] == board[x][2])) {
-      printf("%s\n", "test 1");
       return 1;
     }
     //check col for winner
     if((board[0][y] == board[1][y]) && (board[0][y] == board[2][y])) {
-      printf("%s\n", "test 2");
 
       return 1;
     }
     //check diagonal for winner
     if((board[1][1]=='X' || board[1][1]=='O') && (board[0][0] == board[1][1]) && (board[0][0] == board[2][2])) {
-      printf("%s\n", "test 3");
 
       return 1;
     }
     //check diagonal for winner
     if((board[1][1]=='X' || board[1][1]=='O') && (board[0][2] == board[1][1]) && (board[0][2] == board[2][0])) {
-      printf("%s\n", "test 4");
 
       return 1;
     }
@@ -447,6 +445,7 @@ void Pthread_create(pthread_t *tidp, pthread_attr_t *attrp,
 
   }
 
+//Corentin Rejaud
   /* Process spectator */
   void process_spec(int fd, struct sockaddr_in clientaddr, socklen_t clientlen) {
 
@@ -527,6 +526,7 @@ void Pthread_create(pthread_t *tidp, pthread_attr_t *attrp,
 
   }
 
+//Harry Li
   /* Thread function for calling process_p1 */
   void process_p1_thread_func(void *args) {
     request_arg *targ = args;
