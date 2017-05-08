@@ -231,6 +231,7 @@ void Pthread_create(pthread_t *tidp, pthread_attr_t *attrp,
       snprintf(buf, MAXLINE, "process_spec: (p1) incorrect join key: %s\n",buf);
       Rio_writen_w(fd, buf, strlen(buf));
       Close(fd);
+      is_player_1_taken = FALSE;
       return;
     }
     // Start processing player 1
@@ -346,6 +347,7 @@ void Pthread_create(pthread_t *tidp, pthread_attr_t *attrp,
       printf("process_spec: (spec) incorrect join key: %s\n", buf);
       snprintf(buf, MAXLINE, "process_spec: (spec) incorrect join key: %s\n", buf);
       Rio_writen_w(fd, buf, strlen(buf));
+      is_player_2_taken = FALSE;
       Close(fd);
       return;
     }

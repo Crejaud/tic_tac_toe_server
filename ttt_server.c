@@ -3,6 +3,10 @@
 int spec_count = 0;
 int current_board_index = 1;
 int winning_player = 0;
+int is_player_1_taken =
+    FALSE; /* Player 1 boolean to check if player 1 is taken */
+int is_player_2_taken =
+    FALSE;     /* Player 2 boolean to check if player 1 is taken */
 
 int main(int argc, char **argv) {
   if (argc != 2) {
@@ -15,13 +19,10 @@ int main(int argc, char **argv) {
   int port;            /* The port the server is listening on */
   socklen_t clientlen; /* Size in bytes of the client socket address */
   struct sockaddr_in clientaddr; /* Client address struct */
-  int is_player_1_taken =
-      FALSE; /* Player 1 boolean to check if player 1 is taken */
-  int is_player_2_taken =
-      FALSE;     /* Player 2 boolean to check if player 1 is taken */
   int p1_fd;     /* Player 1 socket fd */
   int p2_fd;     /* Player 2 socket fd */
   int spec_fd;   /* Spectator socket fd */
+  int temp_fd;
   pthread_t tid; /* Pthread used for processing spectators, p1, and p2 */
 
   // Initialize board_history
@@ -70,8 +71,11 @@ int main(int argc, char **argv) {
     clientlen = sizeof(clientaddr);
     printf("listening\n");
 
+    temp_fd = Accept(listenfd, (struct sockaddr *)&clientaddr, &clientlen);
+
     if (is_player_1_taken == FALSE) {
-      p1_fd = Accept(listenfd, (struct sockaddr *)&clientaddr, &clientlen);
+      p1_fd = temp_fd;
+      temp_fd = 0;
       printf("Accepting player 1\n");
       is_player_1_taken = TRUE;
 
@@ -81,7 +85,8 @@ int main(int argc, char **argv) {
       // Create thread and call process_request
       Pthread_create(&tid, NULL, process_p1_thread_func, targ);
     } else if (is_player_2_taken == FALSE) {
-      p2_fd = Accept(listenfd, (struct sockaddr *)&clientaddr, &clientlen);
+      p2_fd = temp_fd;
+      temp_fd = 0;
       printf("Accepting player 2\n");
       is_player_2_taken = TRUE;
 
@@ -92,7 +97,8 @@ int main(int argc, char **argv) {
       Pthread_create(&tid, NULL, process_p2_thread_func, targ);
     } else {
       // is a spectator!
-      spec_fd = Accept(listenfd, (struct sockaddr *)&clientaddr, &clientlen);
+      spec_fd = temp_fd;
+      temp_fd = 0;
       printf("Accepting spectator\n");
       spec_count++;
 

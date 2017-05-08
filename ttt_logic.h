@@ -54,6 +54,8 @@ extern int spec_count;
 // Current board index
 extern int current_board_index;
 extern int winning_player;
+extern int is_player_1_taken;
+extern int is_player_2_taken;
 pthread_cond_t current_board_index_cv;
 
 /* This struct is for sending the necessary arguements to a thread to handle a socket */
