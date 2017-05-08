@@ -134,8 +134,8 @@ int Open_listenfd(int port) {
 int make_move(int player, int x, int y) {
 
 
-        printf("%d %d\n", x, y);
-        printf("%d\n", current_board_index );
+        printf("move coords %d %d\n", x, y);
+        printf("current board index %d\n", current_board_index );
         for (int i = current_board_index; i < current_board_index+1; i++) {
                 board_history[i] = (char **)Malloc(BOARD_HEIGHT * sizeof(char *));
                 for (int j = 0; j < BOARD_HEIGHT; j++) {
@@ -155,7 +155,7 @@ int make_move(int player, int x, int y) {
         }
 
         //check if the spot is vacant
-        if((board_history[current_board_index][x][y]!=X_LITERAL) || (board_history[current_board_index][x][y]!=O_LITERAL)) {
+        if((board_history[current_board_index][x][y]!=X_LITERAL) && (board_history[current_board_index][x][y]!=O_LITERAL)) {
                 //make the move
 
                 if(player == 1) {
@@ -174,7 +174,7 @@ int make_move(int player, int x, int y) {
                 return 1;
         }
         else {
-                printf("make_move: player %i issued a bad request (1).\n",player);
+                printf("make_move: player %i moved on a taken space.\n",player);
                 return 0;
         }
 
@@ -196,13 +196,13 @@ int check_winner(int x, int y) {
                 return 1;
         }
         //check diagonal for winner
-        if((board[0][0] == board[1][1]) || (board[0][0] == board[2][2])) {
+        if((board[1][1]=='X' || board[1][1]=='O') && (board[0][0] == board[1][1]) && (board[0][0] == board[2][2])) {
             printf("%s\n", "test 3");
 
                 return 1;
         }
         //check diagonal for winner
-        if((board[0][2] == board[1][1]) || (board[0][2] == board[2][0])) {
+        if((board[1][1]=='X' || board[1][1]=='O') && (board[0][2] == board[1][1]) && (board[0][2] == board[2][0])) {
             printf("%s\n", "test 4");
 
                 return 1;
@@ -253,6 +253,14 @@ void process_p1(int fd, struct sockaddr_in clientaddr, socklen_t clientlen) {
                 if(buf[1]!=' ') {
                         printf("process_p1: p1 sent invalid move format.\n");
                         continue; //skip to next p1 input
+                }
+
+                if(atoi(&buf[0])<0 || atoi(&buf[0])>2) {
+                  printf("process_p1: p1 sent invalid x coordinate.\n");
+                }
+
+                if(atoi(&buf[2])<0 || atoi(&buf[2])>2) {
+                  printf("process_p1: p1 sent invalid y coordinate.\n");
                 }
 
 
@@ -308,9 +316,16 @@ void process_p2(int fd, struct sockaddr_in clientaddr, socklen_t clientlen) {
                         printf("process_p2: p2 sent invalid move format.\n");
                         continue; //skip to next p2 input
                 }
+                if(atoi(&buf[0])<0 || atoi(&buf[0])>2) {
+                  printf("process_p2: p2 sent invalid x coordinate.\n");
+                }
+
+                if(atoi(&buf[2])<0 || atoi(&buf[2])>2) {
+                  printf("process_p2: p2 sent invalid y coordinate.\n");
+                }
 
                 //try to make move
-                make_move(2,&buf[0],&buf[2]);
+                make_move(2,atoi(&buf[0]),atoi(&buf[2]));
         }
 
 }
@@ -336,7 +351,7 @@ void process_spec(int fd, struct sockaddr_in clientaddr, socklen_t clientlen) {
         while (1) {
                 // wait until the current board index changes
                 printf("current board index = %d\n", current_board_index);
-                Pthread_mutex_lock(&current_board_index_mtx);
+                //Pthread_mutex_lock(&current_board_index_mtx);
                 if (board_index >= current_board_index)
                         pthread_cond_wait(&current_board_index_cv, &current_board_index_mtx);
 
@@ -376,7 +391,7 @@ void process_spec(int fd, struct sockaddr_in clientaddr, socklen_t clientlen) {
                                 return;
                         }
                 }
-                Pthread_mutex_unlock(&current_board_index_mtx);
+                //Pthread_mutex_unlock(&current_board_index_mtx);
         }
 
 }
