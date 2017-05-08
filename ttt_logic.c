@@ -687,10 +687,10 @@ char** construct_tic_tac_toe_board(int board_index) {
                                 else {
                                         int actual_row = i/2;
                                         int actual_col = j/2;
-                                        if (board_history[board_index][actual_row][actual_col] == X) {
+                                        if (board_history[board_index][actual_row][actual_col] == X_LITERAL) {
                                                 board_row[j] = 'X';
                                         }
-                                        else if (board_history[board_index][actual_row][actual_col] == O) {
+                                        else if (board_history[board_index][actual_row][actual_col] == O_LITERAL) {
                                                 board_row[j] = 'O';
                                         }
                                         else {
