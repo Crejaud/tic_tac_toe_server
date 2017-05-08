@@ -219,13 +219,17 @@ void Pthread_create(pthread_t *tidp, pthread_attr_t *attrp,
 
     if ((n = Rio_readlineb_w(&rio, buf, sizeof(JOIN_KEY))) <= 0) {
       printf("process_spec: client issued a bad request (1).\n");
+      snprintf(buf, MAXLINE, "Bad request (1).\n");
+      Rio_writen_w(fd, buf, strlen(buf));
       Close(fd);
       return;
     }
 
     if (is_buf_join_key(buf) == FALSE) {
       // Incorrect join key
-      printf("process_spec: (p1) incorrect join key: %s | size = %d", buf, sizeof(buf));
+      printf("process_spec: (p1) incorrect join key: %s\n", buf);
+      snprintf(buf, MAXLINE, "process_spec: (p1) incorrect join key: %s\n",buf);
+      Rio_writen_w(fd, buf, strlen(buf));
       Close(fd);
       return;
     }
@@ -250,7 +254,13 @@ void Pthread_create(pthread_t *tidp, pthread_attr_t *attrp,
 
       //p1 only allowed to go when current_board_index is even
       if(current_board_index%2 != 1) {
+        snprintf(buf, MAXLINE, "Waiting for Player 2 to move\n");
+        Rio_writen_w(fd, buf, strlen(buf));
+
         pthread_cond_wait(&current_board_index_cv, &current_board_index_mtx);
+
+        snprintf(buf, MAXLINE, "Player 2 moved\n");
+        Rio_writen_w(fd, buf, strlen(buf));
 
         char** tic_tac_toe_board = construct_tic_tac_toe_board(current_board_index-1);
         for (int i = 0; i < BOARD_HEIGHT + 2; i++) {
@@ -266,8 +276,13 @@ void Pthread_create(pthread_t *tidp, pthread_attr_t *attrp,
         Rio_writen_w(fd, "\n", 1);
       }
 
+      snprintf(buf, MAXLINE, "Your move <x y>: ");
+      Rio_writen_w(fd, buf, strlen(buf));
+
       if ((n = Rio_readlineb_w(&rio, buf, MAXLINE)) <= 0) {
         printf("process_p1: client issued a bad request (1).\n");
+        snprintf(buf, MAXLINE, "Bad request (1).\n");
+        Rio_writen_w(fd, buf, strlen(buf));
         close(fd);
         break;
       }
@@ -275,24 +290,34 @@ void Pthread_create(pthread_t *tidp, pthread_attr_t *attrp,
       //check for correct format
       if(buf[1]!=' ') {
         printf("process_p1: p1 sent invalid move format.\n");
+        snprintf(buf, MAXLINE, "You sent an invalid move format. Please send in format <x y>\n");
+        Rio_writen_w(fd, buf, strlen(buf));
         continue; //skip to next p1 input
       }
 
       if(atoi(&buf[0])<0 || atoi(&buf[0])>2) {
         printf("process_p1: p1 sent invalid x coordinate.\n");
+        snprintf(buf, MAXLINE, "You sent an invalid x coordinate. Please send a coordinate 0, 1, or 2\n");
+        Rio_writen_w(fd, buf, strlen(buf));
         continue;
       }
 
       if(atoi(&buf[2])<0 || atoi(&buf[2])>2) {
         printf("process_p1: p1 sent invalid y coordinate.\n");
+        snprintf(buf, MAXLINE, "You sent an invalid y coordinate. Please send a coordinate 0, 1, or 2\n");
+        Rio_writen_w(fd, buf, strlen(buf));
         continue;
       }
 
       //try to make move
-      make_move(1,atoi(&buf[0]),atoi(&buf[2]));
+      if (make_move(1,atoi(&buf[0]),atoi(&buf[2])) == 0) {
+        snprintf(buf, MAXLINE, "That spot is taken. Please send a valid move.\n");
+        Rio_writen_w(fd, buf, strlen(buf));
+      }
 
       if(winning_player != 0) {
-        printf("Player %i won!\n", winning_player);
+        snprintf(buf, MAXLINE, "Player %i won!\n", winning_player);
+        Rio_writen_w(fd, buf, strlen(buf));
         Close(fd);
         exit(0);
       }
@@ -310,13 +335,17 @@ void Pthread_create(pthread_t *tidp, pthread_attr_t *attrp,
 
     if ((n = Rio_readlineb_w(&rio, buf, sizeof(JOIN_KEY))) <= 0) {
       printf("process_spec: client issued a bad request (1).\n");
+      snprintf(buf, MAXLINE, "Bad request\n");
+      Rio_writen_w(fd, buf, strlen(buf));
       Close(fd);
       return;
     }
 
     if (is_buf_join_key(buf) == FALSE) {
       // Incorrect join key
-      printf("process_spec: (spec) incorrect join key: %s | size = %d", buf, sizeof(buf));
+      printf("process_spec: (spec) incorrect join key: %s\n", buf);
+      snprintf(buf, MAXLINE, "process_spec: (spec) incorrect join key: %s\n", buf);
+      Rio_writen_w(fd, buf, strlen(buf));
       Close(fd);
       return;
     }
@@ -342,7 +371,13 @@ void Pthread_create(pthread_t *tidp, pthread_attr_t *attrp,
 
       //p2 only allowed to go when current_board_index is odd
       if(current_board_index%2 != 0) {
+        snprintf(buf, MAXLINE, "Waiting for Player 1 to move\n");
+        Rio_writen_w(fd, buf, strlen(buf));
+
         pthread_cond_wait(&current_board_index_cv, &current_board_index_mtx);
+
+        snprintf(buf, MAXLINE, "Player 1 moved\n");
+        Rio_writen_w(fd, buf, strlen(buf));
 
         char** tic_tac_toe_board = construct_tic_tac_toe_board(current_board_index-1);
         for (int i = 0; i < BOARD_HEIGHT + 2; i++) {
@@ -358,9 +393,14 @@ void Pthread_create(pthread_t *tidp, pthread_attr_t *attrp,
         Rio_writen_w(fd, "\n", 1);
       }
 
+      snprintf(buf, MAXLINE, "Your move <x y>: ");
+      Rio_writen_w(fd, buf, strlen(buf));
+
 
       if ((n = Rio_readlineb_w(&rio, buf, MAXLINE)) <= 0) {
         printf("process_p2: client issued a bad request (1).\n");
+        snprintf(buf, MAXLINE, "Bad request\n");
+        Rio_writen_w(fd, buf, strlen(buf));
         close(fd);
         break;
       }
@@ -368,23 +408,34 @@ void Pthread_create(pthread_t *tidp, pthread_attr_t *attrp,
       //check for correct format
       if(buf[1]!=' ') {
         printf("process_p2: p2 sent invalid move format.\n");
+        snprintf(buf, MAXLINE, "You sent an invalid move format. Please send in format <x y>\n");
+        Rio_writen_w(fd, buf, strlen(buf));
         continue; //skip to next p2 input
       }
+
       if(atoi(&buf[0])<0 || atoi(&buf[0])>2) {
         printf("process_p2: p2 sent invalid x coordinate.\n");
+        snprintf(buf, MAXLINE, "You sent an invalid x coordinate. Please send a coordinate 0, 1, or 2\n");
+        Rio_writen_w(fd, buf, strlen(buf));
         continue;
       }
 
       if(atoi(&buf[2])<0 || atoi(&buf[2])>2) {
         printf("process_p2: p2 sent invalid y coordinate.\n");
+        snprintf(buf, MAXLINE, "You sent an invalid y coordinate. Please send a coordinate 0, 1, or 2\n");
+        Rio_writen_w(fd, buf, strlen(buf));
         continue;
       }
 
       //try to make move
-      make_move(2,atoi(&buf[0]),atoi(&buf[2]));
+      if (make_move(2,atoi(&buf[0]),atoi(&buf[2])) == 0) {
+        snprintf(buf, MAXLINE, "That spot is taken. Please send a valid move.\n");
+        Rio_writen_w(fd, buf, strlen(buf));
+      }
 
       if(winning_player != 0) {
-        printf("Player %i won!\n", winning_player);
+        snprintf(buf, MAXLINE, "Player %i won!\n", winning_player);
+        Rio_writen_w(fd, buf, strlen(buf));
         Close(fd);
         exit(0);
       }
@@ -420,6 +471,12 @@ void Pthread_create(pthread_t *tidp, pthread_attr_t *attrp,
 
       // loop until the spectator is up to date
       while (board_history[board_index] != NULL) {
+
+        if(board_index != 0) {
+          snprintf(buf, MAXLINE, "Player %i moved\n", (board_index-1)%2+1);
+          Rio_writen_w(fd, buf, strlen(buf));
+        }
+
         char** tic_tac_toe_board = construct_tic_tac_toe_board(board_index);
 
         // BOARD_HEIGHT + 2 because a board has tic tac toe board looks like this
@@ -438,14 +495,15 @@ void Pthread_create(pthread_t *tidp, pthread_attr_t *attrp,
           printf("%s", tic_tac_toe_board[i]);
           free(tic_tac_toe_board[i]);
         }
-        printf("each row freed correctly\n");
         free(tic_tac_toe_board);
-        printf("tic_tac_toe_board correctly freed\n");
 
         Rio_writen_w(fd, "\n", 1);
 
         // increment local board index
         board_index++;
+
+        snprintf(buf, MAXLINE, "Waiting for Player %i to move\n", (board_index-1)%2+1);
+        Rio_writen_w(fd, buf, strlen(buf));
 
         if(winning_player != 0) {
           printf("Player %i won!\n", winning_player);
