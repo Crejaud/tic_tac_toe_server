@@ -236,8 +236,8 @@ void Pthread_create(pthread_t *tidp, pthread_attr_t *attrp,
     // Start processing player 1
 
     // when making a move, please call pthread_cond_broadcast(&current_board_index_cv) so that the spectators can receive the latest board
-
-    while (1) {
+    snprintf(buf, MAXLINE, "Mode: Player 1\n");
+    Rio_writen_w(fd, buf, strlen(buf));    while (1) {
 
       char** tic_tac_toe_board = construct_tic_tac_toe_board(current_board_index-1);
       for (int i = 0; i < BOARD_HEIGHT + 2; i++) {
@@ -353,7 +353,8 @@ void Pthread_create(pthread_t *tidp, pthread_attr_t *attrp,
     // Start processing player 2
 
     // when making a move, please call pthread_cond_broadcast(&current_board_index_cv) so that the spectators can receive the latest board
-
+    snprintf(buf, MAXLINE, "Mode: Player 2\n");
+    Rio_writen_w(fd, buf, strlen(buf));
     while (1) {
 
       char** tic_tac_toe_board = construct_tic_tac_toe_board(current_board_index-1);
@@ -461,7 +462,8 @@ void Pthread_create(pthread_t *tidp, pthread_attr_t *attrp,
 
     // local board index
     int board_index = 0;
-
+    snprintf(buf, MAXLINE, "Mode: Spectator\n");
+    Rio_writen_w(fd, buf, strlen(buf));
     while (1) {
       // wait until the current board index changes
       printf("current board index = %d\n", current_board_index);
